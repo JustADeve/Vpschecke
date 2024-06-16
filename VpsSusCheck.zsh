@@ -38,7 +38,7 @@ check_high_memory_usage() {
 check_high_disk_usage() {
     local threshold=80
     local disk_usage
-    disk_usage=$(df / | awk 'END{print $5}' | tr -d '%')
+    disk_usage=$(df / | awk 'NR==2 {print $5}' | tr -d '%')
     if (( disk_usage > threshold )); then
         echo "High disk usage detected: ${disk_usage}%"
         return 0
@@ -66,36 +66,22 @@ check_unusual_process_activity() {
     local cpu_threshold=50
     local memory_threshold=50
     local unusual_processes=()
-    ps -eo pid,comm,%cpu,%mem --sort=-%cpu | while read pid comm cpu mem; do
-        if (( ${cpu%.*} > cpu_threshold || ${mem%.*} > memory_threshold )); then
-            unusual_processes+=("$pid $comm CPU: $cpu% MEM: $mem%")
-        fi
-    done
-    if (( ${#unusual_processes[@]} > 0 )); then
-        echo "Unusual process activity detected:"
-        for process in $unusual_processes; do
-            echo $process
-        done
-        return 0
-    fi
-    return 1
+    ps | awk -v cpu_thresh="$cpu_threshold" -v mem_thresh="$memory_threshold" 'NR > 1 && $3 > cpu_thresh || $4 > mem_thresh {print "PID: "$1", Name: "$5", CPU: "$3"% MEM: "$4"%"}'
+    return 0
 }
 
 # Function to check for unusual network activity
 check_unusual_network_activity() {
     local suspicious_ports=(8333 7777 4444 9050 9150)
     local suspicious_connections=()
-    netstat -tulnp | grep -E ':(8333|7777|4444|9050|9150)' | while read line; do
-        suspicious_connections+=$line
-    done
-    if (( ${#suspicious_connections[@]} > 0 )); then
-        echo "Unusual network activity detected:"
-        for connection in $suspicious_connections; do
-            echo $connection
-        done
-        return 0
-    fi
-    return 1
+    netstat -tuln | awk -v ports="${suspicious_ports[*]}" '
+        BEGIN {
+            split(ports, arr, " ");
+        }
+        NR > 2 && ($4 ~ /:[0-9]+$/ && substr($4, index($4, ":")+1) ~ arr) {
+            print "PID: "$7", Local Address: "$4", Remote Address: "$5
+        }'
+    return 0
 }
 
 # Function to check for suspicious DNS queries
@@ -135,10 +121,8 @@ main() {
     check_unusual_network_activity && log+=(suspicious_connections)
     check_suspicious_dns_queries && log+=(suspicious_dns_queries)
 
-    # Print and save the log as JSON
-    local json_log=$(printf '%s\n' "${log[@]}" | jq -R . | jq -s .)
-    echo $json_log | jq .
-    echo $json_log > system_monitor_log.json
+    # Print log
+    printf '%s\n' "${log[@]}"
 }
 
 main
