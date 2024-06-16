@@ -1,14 +1,21 @@
 #!/bin/zsh
 
-# List of known malicious software/processes and inappropriate content
-malicious_software_list=(
-    xmrig tor minerd cpuminer ethminer nsfminer
-    zmap masscan sqlmap nmap hping hydra john
-    medusa aircrack-ng ettercap kismet wireshark
-    tcpdump strace ltrace netcat nc socat ncat
-    ngrep dsniff tcpflow darkstat iftop iptraf
-    ntop bmon vnstat htop onion darkweb boobies
-)
+# Ensure necessary packages are installed
+ensure_packages() {
+    local required_packages=("awk" "ps" "net-tools" "procps-ng" "busybox-extras")
+    local missing_packages=()
+
+    for pkg in "${required_packages[@]}"; do
+        if ! apk info "$pkg" >/dev/null 2>&1; then
+            missing_packages+=("$pkg")
+        fi
+    done
+
+    if (( ${#missing_packages[@]} > 0 )); then
+        echo "Installing necessary packages: ${missing_packages[*]}"
+        apk add --no-cache "${missing_packages[@]}"
+    fi
+}
 
 # Function to check for high CPU usage
 check_high_cpu_usage() {
@@ -49,13 +56,23 @@ check_high_disk_usage() {
 # Function to check for specific malicious software
 check_malicious_software() {
     local found_software=()
-    for software in $malicious_software_list; do
-        if command -v $software >/dev/null 2>&1; then
-            found_software+=$software
+    local malicious_software_list=(
+        xmrig tor minerd cpuminer ethminer nsfminer
+        zmap masscan sqlmap nmap hping hydra john
+        medusa aircrack-ng ettercap kismet wireshark
+        tcpdump strace ltrace netcat nc socat ncat
+        ngrep dsniff tcpflow darkstat iftop iptraf
+        ntop bmon vnstat htop onion darkweb boobies
+    )
+
+    for software in "${malicious_software_list[@]}"; do
+        if command -v "$software" >/dev/null 2>&1; then
+            found_software+=("$software")
         fi
     done
+
     if (( ${#found_software[@]} > 0 )); then
-        echo "Malicious software detected: ${found_software[@]}"
+        echo "Malicious software detected: ${found_software[*]}"
         return 0
     fi
     return 1
@@ -66,9 +83,9 @@ check_unusual_process_activity() {
     local cpu_threshold=50
     local memory_threshold=50
     local unusual_processes=()
-    ps | awk -v cpu_thresh="$cpu_threshold" -v mem_thresh="$memory_threshold" '
-        NR > 1 && $3 > cpu_thresh || $4 > mem_thresh {
-            print "PID: "$1", Name: "$5", CPU: "$3"% MEM: "$4"%"
+    ps aux | awk -v cpu_thresh="$cpu_threshold" -v mem_thresh="$memory_threshold" '
+        NR > 0 && $3 > cpu_thresh || $4 > mem_thresh {
+            print "PID: "$2", Name: "$11", CPU: "$3"% MEM: "$4"%"
         }'
     return 0
 }
@@ -94,19 +111,18 @@ check_suspicious_dns_queries() {
     local suspicious_domains=("onion" "darkweb" "boobies" "porn" "xxx" "adult")
 
     if [[ -f $dns_log_file ]]; then
-        while read -r line; do
-            for domain in $suspicious_domains; do
+        while IFS= read -r line; do
+            for domain in "${suspicious_domains[@]}"; do
                 if [[ $line == *"$domain"* ]]; then
-                    suspicious_queries+=$line
+                    suspicious_queries+=("$line")
                 fi
             done
-        done < $dns_log_file
+        done < "$dns_log_file"
     fi
+
     if (( ${#suspicious_queries[@]} > 0 )); then
         echo "Suspicious DNS queries detected:"
-        for query in $suspicious_queries; do
-            echo $query
-        done
+        printf '%s\n' "${suspicious_queries[@]}"
         return 0
     fi
     return 1
@@ -115,6 +131,9 @@ check_suspicious_dns_queries() {
 # Main function to run all checks and log results
 main() {
     echo "System Monitoring Script"
+
+    ensure_packages
+
     local log=()
     check_high_cpu_usage && log+=(high_cpu_usage)
     check_high_memory_usage && log+=(high_memory_usage)
