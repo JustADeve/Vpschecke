@@ -66,7 +66,10 @@ check_unusual_process_activity() {
     local cpu_threshold=50
     local memory_threshold=50
     local unusual_processes=()
-    ps | awk -v cpu_thresh="$cpu_threshold" -v mem_thresh="$memory_threshold" 'NR > 1 && $3 > cpu_thresh || $4 > mem_thresh {print "PID: "$1", Name: "$5", CPU: "$3"% MEM: "$4"%"}'
+    ps | awk -v cpu_thresh="$cpu_threshold" -v mem_thresh="$memory_threshold" '
+        NR > 1 && $3 > cpu_thresh || $4 > mem_thresh {
+            print "PID: "$1", Name: "$5", CPU: "$3"% MEM: "$4"%"
+        }'
     return 0
 }
 
