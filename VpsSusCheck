@@ -2,9 +2,9 @@ import psutil
 import subprocess
 import json
 import os
+import sys
+import re
 import socket
-import time
-import shutil
 
 # Function to install necessary packages
 def install_packages():
@@ -19,14 +19,14 @@ def install_packages():
         print("Installing netifaces...")
         subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'netifaces'])
 
-# List of known malicious software/processes
+# List of known malicious software/processes and inappropriate content
 malicious_software_list = [
     'xmrig', 'tor', 'minerd', 'cpuminer', 'ethminer', 'nsfminer',
     'zmap', 'masscan', 'sqlmap', 'nmap', 'hping', 'hydra', 'john',
     'medusa', 'aircrack-ng', 'ettercap', 'kismet', 'wireshark',
     'tcpdump', 'strace', 'ltrace', 'netcat', 'nc', 'socat', 'ncat',
     'ngrep', 'dsniff', 'tcpflow', 'darkstat', 'iftop', 'iptraf',
-    'ntop', 'bmon', 'vnstat', 'htop'
+    'ntop', 'bmon', 'vnstat', 'htop', 'onion', 'darkweb', 'boobies'
 ]
 
 # Function to check for high CPU usage
@@ -107,6 +107,27 @@ def check_unusual_network_activity():
         return True
     return False
 
+# Function to check for suspicious DNS queries
+def check_suspicious_dns_queries():
+    suspicious_domains = [
+        'onion', 'darkweb', 'boobies', 'porn', 'xxx', 'adult'
+    ]
+    dns_log_file = '/var/log/dnsmasq.log'  # Path to your DNS log file
+    suspicious_queries = []
+
+    if os.path.exists(dns_log_file):
+        with open(dns_log_file, 'r') as log:
+            for line in log:
+                if any(domain in line for domain in suspicious_domains):
+                    suspicious_queries.append(line.strip())
+
+    if suspicious_queries:
+        print("Suspicious DNS queries detected:")
+        for query in suspicious_queries:
+            print(query)
+        return True
+    return False
+
 # Function to fetch process details
 def fetch_process_details(pid):
     try:
@@ -143,6 +164,184 @@ def main():
         log['unusual_processes'] = [proc for proc in get_running_processes() if proc['cpu_percent'] > 50 or proc['memory_percent'] > 50]
     if check_unusual_network_activity():
         log['suspicious_connections'] = [fetch_process_details(conn.pid) for conn in psutil.net_connections(kind='inet') if conn.laddr.port in [8333, 7777, 4444, 9050, 9150]]
+    if check_suspicious_dns_queries():
+        log['suspicious_dns_queries'] = check_suspicious_dns_queries()
+
+    # Print and save the log as JSON
+    print(json.dumps(log, indent=4))
+    with open('system_monitor_log.json', 'w') as log_file:
+        json.dump(log, log_file, indent=4)
+
+if __name__ == "__main__":
+    main()
+import psutil
+import subprocess
+import json
+import os
+import sys
+import re
+import socket
+
+# Function to install necessary packages
+def install_packages():
+    try:
+        import psutil
+    except ImportError:
+        print("Installing psutil...")
+        subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'psutil'])
+    try:
+        import netifaces
+    except ImportError:
+        print("Installing netifaces...")
+        subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'netifaces'])
+
+# List of known malicious software/processes and inappropriate content
+malicious_software_list = [
+    'xmrig', 'tor', 'minerd', 'cpuminer', 'ethminer', 'nsfminer',
+    'zmap', 'masscan', 'sqlmap', 'nmap', 'hping', 'hydra', 'john',
+    'medusa', 'aircrack-ng', 'ettercap', 'kismet', 'wireshark',
+    'tcpdump', 'strace', 'ltrace', 'netcat', 'nc', 'socat', 'ncat',
+    'ngrep', 'dsniff', 'tcpflow', 'darkstat', 'iftop', 'iptraf',
+    'ntop', 'bmon', 'vnstat', 'htop', 'onion', 'darkweb', 'boobies'
+]
+
+# Function to check for high CPU usage
+def check_high_cpu_usage(threshold=80):
+    cpu_usage = psutil.cpu_percent(interval=1)
+    if cpu_usage > threshold:
+        print(f"High CPU usage detected: {cpu_usage}%")
+        return True
+    return False
+
+# Function to check for high memory usage
+def check_high_memory_usage(threshold=80):
+    memory_info = psutil.virtual_memory()
+    if memory_info.percent > threshold:
+        print(f"High memory usage detected: {memory_info.percent}%")
+        return True
+    return False
+
+# Function to check for high disk usage
+def check_high_disk_usage(threshold=80):
+    disk_usage = psutil.disk_usage('/')
+    if disk_usage.percent > threshold:
+        print(f"High disk usage detected: {disk_usage.percent}%")
+        return True
+    return False
+
+# Function to check for specific malicious software
+def check_malicious_software():
+    found_software = []
+
+    for software in malicious_software_list:
+        result = subprocess.run(['which', software], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if result.returncode == 0:
+            found_software.append(software)
+    
+    if found_software:
+        print(f"Malicious software detected: {', '.join(found_software)}")
+        return True
+    return False
+
+# Function to get a list of running processes
+def get_running_processes():
+    processes = []
+    for proc in psutil.process_iter(['pid', 'name', 'cpu_percent', 'memory_percent']):
+        processes.append(proc.info)
+    return processes
+
+# Function to check for unusual process activity
+def check_unusual_process_activity(cpu_threshold=50, memory_threshold=50):
+    unusual_processes = []
+    processes = get_running_processes()
+    
+    for proc in processes:
+        if proc['cpu_percent'] > cpu_threshold or proc['memory_percent'] > memory_threshold:
+            unusual_processes.append(proc)
+    
+    if unusual_processes:
+        print("Unusual process activity detected:")
+        for proc in unusual_processes:
+            print(f"PID: {proc['pid']}, Name: {proc['name']}, CPU: {proc['cpu_percent']}%, Memory: {proc['memory_percent']}%")
+        return True
+    return False
+
+# Function to check for unusual network activity
+def check_unusual_network_activity():
+    suspicious_ports = [8333, 7777, 4444, 9050, 9150]  # Commonly used ports for mining and Tor
+    connections = psutil.net_connections(kind='inet')
+    suspicious_connections = []
+
+    for conn in connections:
+        if conn.laddr.port in suspicious_ports:
+            suspicious_connections.append(conn)
+    
+    if suspicious_connections:
+        print("Unusual network activity detected:")
+        for conn in suspicious_connections:
+            print(f"PID: {conn.pid}, Local Address: {conn.laddr}, Remote Address: {conn.raddr}")
+        return True
+    return False
+
+# Function to check for suspicious DNS queries
+def check_suspicious_dns_queries():
+    suspicious_domains = [
+        'onion', 'darkweb', 'boobies', 'porn', 'xxx', 'adult'
+    ]
+    dns_log_file = '/var/log/dnsmasq.log'  # Path to your DNS log file
+    suspicious_queries = []
+
+    if os.path.exists(dns_log_file):
+        with open(dns_log_file, 'r') as log:
+            for line in log:
+                if any(domain in line for domain in suspicious_domains):
+                    suspicious_queries.append(line.strip())
+
+    if suspicious_queries:
+        print("Suspicious DNS queries detected:")
+        for query in suspicious_queries:
+            print(query)
+        return True
+    return False
+
+# Function to fetch process details
+def fetch_process_details(pid):
+    try:
+        proc = psutil.Process(pid)
+        return {
+            'pid': proc.pid,
+            'name': proc.name(),
+            'exe': proc.exe(),
+            'cmdline': proc.cmdline(),
+            'create_time': proc.create_time(),
+            'cpu_percent': proc.cpu_percent(interval=1.0),
+            'memory_percent': proc.memory_percent(),
+            'status': proc.status(),
+            'username': proc.username(),
+            'connections': [conn.laddr.port for conn in proc.connections()]
+        }
+    except psutil.NoSuchProcess:
+        return None
+
+# Main function to run all checks and log results
+def main():
+    install_packages()
+    print("System Monitoring Script")
+    log = {}
+    if check_high_cpu_usage():
+        log['high_cpu_usage'] = psutil.cpu_percent(interval=1)
+    if check_high_memory_usage():
+        log['high_memory_usage'] = psutil.virtual_memory().percent
+    if check_high_disk_usage():
+        log['high_disk_usage'] = psutil.disk_usage('/').percent
+    if check_malicious_software():
+        log['malicious_software'] = [sw for sw in malicious_software_list if subprocess.run(['which', sw], stdout=subprocess.PIPE, stderr=subprocess.PIPE).returncode == 0]
+    if check_unusual_process_activity():
+        log['unusual_processes'] = [proc for proc in get_running_processes() if proc['cpu_percent'] > 50 or proc['memory_percent'] > 50]
+    if check_unusual_network_activity():
+        log['suspicious_connections'] = [fetch_process_details(conn.pid) for conn in psutil.net_connections(kind='inet') if conn.laddr.port in [8333, 7777, 4444, 9050, 9150]]
+    if check_suspicious_dns_queries():
+        log['suspicious_dns_queries'] = check_suspicious_dns_queries()
 
     # Print and save the log as JSON
     print(json.dumps(log, indent=4))
