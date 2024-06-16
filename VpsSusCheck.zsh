@@ -1,19 +1,19 @@
 #!/bin/zsh
 
-# Ensure necessary packages are installed
+# Function to ensure necessary packages are installed
 ensure_packages() {
     local required_packages=("awk" "net-tools" "procps-ng" "busybox-extras")
     local missing_packages=()
 
     for pkg in "${required_packages[@]}"; do
-        if ! apk info "$pkg" >/dev/null 2>&1; then
+        if ! command -v "$pkg" >/dev/null 2>&1; then
             missing_packages+=("$pkg")
         fi
     done
 
     if (( ${#missing_packages[@]} > 0 )); then
         echo "Installing necessary packages: ${missing_packages[*]}"
-        apk add --no-cache "${missing_packages[@]}"
+        apk add --no-cache ${missing_packages[@]}
     fi
 }
 
@@ -36,18 +36,6 @@ check_high_memory_usage() {
     mem_usage=$(free | awk '/Mem/ {printf("%.0f"), $3/$2*100}')
     if (( mem_usage > threshold )); then
         echo "High memory usage detected: ${mem_usage}%"
-        return 0
-    fi
-    return 1
-}
-
-# Function to check for high disk usage
-check_high_disk_usage() {
-    local threshold=80
-    local disk_usage
-    disk_usage=$(df / | awk 'NR==2 {print $5}' | tr -d '%')
-    if (( disk_usage > threshold )); then
-        echo "High disk usage detected: ${disk_usage}%"
         return 0
     fi
     return 1
@@ -137,14 +125,18 @@ main() {
     local log=()
     check_high_cpu_usage && log+=(high_cpu_usage)
     check_high_memory_usage && log+=(high_memory_usage)
-    check_high_disk_usage && log+=(high_disk_usage)
     check_malicious_software && log+=(malicious_software)
     check_unusual_process_activity && log+=(unusual_processes)
     check_unusual_network_activity && log+=(suspicious_connections)
     check_suspicious_dns_queries && log+=(suspicious_dns_queries)
 
     # Print log
-    printf '%s\n' "${log[@]}"
+    if (( ${#log[@]} == 0 )); then
+        echo "No issues detected."
+    else
+        echo "Issues detected:"
+        printf '%s\n' "${log[@]}"
+    fi
 }
 
 main
