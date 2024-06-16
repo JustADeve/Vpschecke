@@ -2,7 +2,7 @@
 
 # Ensure necessary packages are installed
 ensure_packages() {
-    local required_packages=("awk" "ps" "net-tools" "procps-ng" "busybox-extras")
+    local required_packages=("awk" "net-tools" "procps-ng" "busybox-extras")
     local missing_packages=()
 
     for pkg in "${required_packages[@]}"; do
