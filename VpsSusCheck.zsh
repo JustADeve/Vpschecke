@@ -13,6 +13,7 @@ ensure_packages() {
 
     if (( ${#missing_packages[@]} > 0 )); then
         echo "Installing necessary packages: ${missing_packages[*]}"
+        apk update
         apk add --no-cache ${missing_packages[@]}
     fi
 }
